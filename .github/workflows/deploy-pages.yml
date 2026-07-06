@@ -48,10 +48,12 @@ jobs:
           # SPA-Fallback für unbekannte Pfade
           cp dist/index.html dist/404.html
 
+      # Voraussetzung (einmalig): Repo → Settings → Pages →
+      # Build and deployment → Source: „GitHub Actions".
+      # Der Workflow-Token darf Pages nicht selbst aktivieren, daher wird
+      # die vorhandene Konfiguration hier nur ausgelesen (kein enablement).
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
