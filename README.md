@@ -64,10 +64,15 @@ jedem Push auf `main` (Typecheck + Tests + Export) und veröffentlicht sie auf G
 **https://jessehaemmerle.github.io/Alien-Perimeter/**
 
 Diese URL am Smartphone öffnen und über „App installieren“ / „Zum Home-Bildschirm“
-installieren – fertig. Der Workflow lässt sich auch manuell von jedem Branch starten
-(Actions → *Deploy PWA to GitHub Pages* → *Run workflow*). Falls das automatische
-Aktivieren von Pages an Berechtigungen scheitert, einmalig unter
-*Settings → Pages → Source: „GitHub Actions“* freischalten.
+installieren – fertig. Der Workflow lässt sich auch manuell starten
+(Actions → *Deploy PWA to GitHub Pages* → *Run workflow*).
+
+> **Einmalige Voraussetzung:** GitHub Pages muss einmal aktiviert werden unter
+> *Settings → Pages → Build and deployment → Source: „GitHub Actions“*. Der
+> Workflow-Token darf Pages aus Sicherheitsgründen nicht selbst aktivieren –
+> ohne diesen einmaligen Schritt schlägt der Deploy mit
+> *„Create Pages site failed: Resource not accessible by integration“* fehl.
+> Danach läuft jeder weitere Push auf `main` vollautomatisch durch.
 
 Der Build läuft mit `EXPO_BASE_URL=/Alien-Perimeter` (siehe `app.config.js`), da Project
 Pages unter einem Unterpfad liegen; Manifest, Icons und Service Worker verwenden dafür
