@@ -517,14 +517,19 @@ export const useGame = create<GameState>()(
 
         dismissReward: () => set({ lastReward: null }),
 
-        resetGame: () =>
+        resetGame: () => {
+          const playerPos = get().playerPos;
           set({
             callsign: 'Rekrut',
             equippedTitle: null,
             xp: 0,
             stats: { ...EMPTY_STATS },
             inventory: { ...START_INVENTORY },
-            zones: [],
+            // Bei bekannter Position sofort frische Zonen spawnen statt auf
+            // das nächste GPS-Update zu warten
+            zones: playerPos
+              ? generateZonesAround(playerPos, INITIAL_ZONE_COUNT, mulberry32(randomSeed()), Date.now())
+              : [],
             cleared: [],
             lastWaveMs: Date.now(),
             waveCount: 0,
@@ -532,7 +537,8 @@ export const useGame = create<GameState>()(
             mission: null,
             simPos: null,
             lastReward: null,
-          }),
+          });
+        },
       };
     },
     {

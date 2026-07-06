@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Panel, SectionTitle } from '../components/ui';
 import { ITEM_IDS, ITEMS } from '../logic/items';
 import { formatDuration } from '../logic/world';
@@ -12,6 +13,7 @@ export default function ItemsScreen() {
   const useShieldOn = useGame((s) => s.useShieldOn);
   const useScanner = useGame((s) => s.useScanner);
 
+  const insets = useSafeAreaInsets();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 5000);
@@ -19,7 +21,10 @@ export default function ItemsScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingTop: 14 + insets.top }]}
+    >
       <Text style={styles.title}>Ausrüstung</Text>
       <Text style={styles.subtitle}>
         Power-ups aus neutralisierten Zonen. Die meisten setzt du beim Missionsstart ein.

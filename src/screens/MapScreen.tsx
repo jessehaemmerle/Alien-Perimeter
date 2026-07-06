@@ -1,31 +1,16 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, StyleSheet, Text, View } from 'react-native';
-import MapView, { Circle, Marker, Polygon, Polyline } from 'react-native-maps';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MissionHud, ZoneBriefing } from '../components/MissionPanel';
+import TacticalMap from '../components/TacticalMap';
+import type { MapFocus } from '../components/TacticalMap.types';
 import { ActionButton, Panel, ProgressBar } from '../components/ui';
-import { darkMapStyle } from '../data/mapStyle';
+import { FALLBACK_POS } from '../constants';
 import { ITEMS } from '../logic/items';
 import { computeGlobalStats, formatDuration } from '../logic/world';
 import { SIM_TICK_REAL_MS, useGame } from '../state/store';
-import { colors, threatColor, threatFill } from '../theme';
-import type { LatLng } from '../types';
-
-/** Ausweichposition, falls keine GPS-Berechtigung erteilt wird (Wien) */
-const FALLBACK_POS: LatLng = { latitude: 48.2082, longitude: 16.3738 };
-
-function zoneIcon(kind: string): string {
-  switch (kind) {
-    case 'mothership':
-      return '🛸';
-    case 'sector':
-      return '☣️';
-    case 'cluster':
-      return '👾';
-    default:
-      return '🕸️';
-  }
-}
+import { colors } from '../theme';
 
 export default function MapScreen() {
   const zones = useGame((s) => s.zones);
@@ -44,7 +29,9 @@ export default function MapScreen() {
 
   const [gpsDenied, setGpsDenied] = useState(false);
   const [now, setNow] = useState(Date.now());
-  const mapRef = useRef<MapView>(null);
+  const [focus, setFocus] = useState<MapFocus | null>(null);
+  const insets = useSafeAreaInsets();
+  const hadFirstFix = useRef(false);
 
   // GPS-Berechtigung anfragen und Position verfolgen
   useEffect(() => {
@@ -92,6 +79,14 @@ export default function MapScreen() {
     };
   }, [setPlayerPos]);
 
+  // Kamera auf die erste bekannte Position zentrieren
+  useEffect(() => {
+    if (playerPos && !hadFirstFix.current) {
+      hadFirstFix.current = true;
+      setFocus({ center: playerPos, radiusM: 1200 });
+    }
+  }, [playerPos]);
+
   // Simulationsmodus: virtueller Läufer
   useEffect(() => {
     if (!mission?.simulation) return;
@@ -108,117 +103,39 @@ export default function MapScreen() {
   // Kamera zur ausgewählten Zone bewegen
   useEffect(() => {
     const zone = zones.find((z) => z.id === selectedZoneId);
-    if (zone && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          ...zone.center,
-          latitudeDelta: (zone.radiusM / 111_000) * 4,
-          longitudeDelta: (zone.radiusM / 111_000) * 4,
-        },
-        600
-      );
+    if (zone) {
+      setFocus({ center: zone.center, radiusM: zone.radiusM });
     }
-  }, [selectedZoneId, zones]);
+    // Nur bei Auswahlwechsel fokussieren, nicht bei jeder Zonen-Änderung
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedZoneId]);
 
   const global = useMemo(
     () => computeGlobalStats(now, stats, zones, lastWaveMs),
     [now, stats, zones, lastWaveMs]
   );
 
-  const initialRegion = useMemo(
-    () => ({
-      ...(playerPos ?? FALLBACK_POS),
-      latitudeDelta: 0.045,
-      longitudeDelta: 0.045,
-    }),
-    // Nur beim ersten Rendern relevant
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
-  );
-
   return (
     <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={initialRegion}
-        customMapStyle={darkMapStyle}
-        showsUserLocation={!gpsDenied && !mission?.simulation}
-        showsMyLocationButton
-        toolbarEnabled={false}
-      >
-        {zones.map((zone) => (
-          <React.Fragment key={zone.id}>
-            <Polygon
-              coordinates={zone.polygon}
-              strokeColor={threatColor(zone.threat)}
-              fillColor={threatFill(zone.threat)}
-              strokeWidth={selectedZoneId === zone.id ? 3 : 1.5}
-              tappable
-              onPress={() => !mission && selectZone(zone.id)}
-            />
-            {zone.kind === 'mothership' && (
-              <Circle
-                center={zone.center}
-                radius={zone.radiusM * 1.6}
-                strokeColor="rgba(160,107,255,0.35)"
-                fillColor="rgba(20,8,40,0.25)"
-              />
-            )}
-            <Marker
-              coordinate={zone.center}
-              onPress={() => !mission && selectZone(zone.id)}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-            >
-              <Text style={styles.zoneEmoji}>{zoneIcon(zone.kind)}</Text>
-            </Marker>
-          </React.Fragment>
-        ))}
-
-        {cleared.map((area) => (
-          <Circle
-            key={area.id}
-            center={area.center}
-            radius={area.radiusM}
-            strokeColor={
-              area.shieldUntilMs && area.shieldUntilMs > now
-                ? colors.shield
-                : 'rgba(125,255,90,0.5)'
-            }
-            fillColor={
-              area.shieldUntilMs && area.shieldUntilMs > now
-                ? 'rgba(77,163,255,0.12)'
-                : 'rgba(125,255,90,0.08)'
-            }
-          />
-        ))}
-
-        {mission && mission.route.length > 1 && (
-          <Polyline
-            coordinates={mission.route}
-            strokeColor={colors.route}
-            strokeWidth={4}
-          />
-        )}
-
-        {mission?.simulation && simPos && (
-          <Marker coordinate={simPos} anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.simDot} />
-          </Marker>
-        )}
-      </MapView>
+      <TacticalMap
+        zones={zones}
+        cleared={cleared}
+        route={mission?.route ?? []}
+        simPos={mission?.simulation ? simPos : null}
+        playerPos={playerPos}
+        selectedZoneId={selectedZoneId}
+        showUserLocation={!gpsDenied && !mission?.simulation}
+        focus={focus}
+        nowMs={now}
+        onZonePress={(id) => !mission && selectZone(id)}
+      />
 
       {/* Statusleiste oben */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { paddingTop: insets.top }]}>
         <Panel style={styles.topPanel}>
           <View style={styles.topRow}>
-            <Text style={styles.topText}>
-              ☠ Bedrohung {global.globalThreat} %
-            </Text>
-            <Text style={styles.topText}>
-              🌊 Welle in {formatDuration(global.nextWaveInMs)}
-            </Text>
+            <Text style={styles.topText}>☠ Bedrohung {global.globalThreat} %</Text>
+            <Text style={styles.topText}>🌊 Welle in {formatDuration(global.nextWaveInMs)}</Text>
             <Text style={styles.topText}>👾 {zones.length} Zonen</Text>
           </View>
           <ProgressBar
@@ -234,15 +151,25 @@ export default function MapScreen() {
         </Panel>
       </View>
 
+      {/* Auf eigene Position zentrieren */}
+      {playerPos && !selectedZoneId && !mission && (
+        <TouchableOpacity
+          style={[styles.locateButton, { bottom: 24 + insets.bottom }]}
+          onPress={() => setFocus({ center: playerPos, radiusM: 1200 })}
+        >
+          <Text style={styles.locateIcon}>🎯</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Missions-Panel unten */}
-      <View style={styles.bottom}>
+      <View style={[styles.bottom, { paddingBottom: insets.bottom }]}>
         {mission ? <MissionHud /> : selectedZoneId ? <ZoneBriefing /> : null}
       </View>
 
       {/* Belohnungs-Übersicht nach neutralisierter Zone */}
       <Modal visible={!!lastReward} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
-          <Panel style={styles.rewardPanel}>
+          <Panel>
             <Text style={styles.rewardTitle}>✅ Zone neutralisiert!</Text>
             {lastReward && (
               <>
@@ -254,7 +181,8 @@ export default function MapScreen() {
                 </Text>
                 {lastReward.drops.length > 0 && (
                   <Text style={styles.rewardLine}>
-                    Beute: {lastReward.drops.map((d) => `${ITEMS[d].icon} ${ITEMS[d].name}`).join(', ')}
+                    Beute:{' '}
+                    {lastReward.drops.map((d) => `${ITEMS[d].icon} ${ITEMS[d].name}`).join(', ')}
                   </Text>
                 )}
                 {lastReward.newAchievements.length > 0 && (
@@ -286,22 +214,25 @@ const styles = StyleSheet.create({
   topText: { color: colors.text, fontSize: 12, fontWeight: '700' },
   gpsWarning: { color: colors.warning, fontSize: 11, marginTop: 6 },
   bottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
-  zoneEmoji: { fontSize: 22 },
-  simDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.accent,
-    borderWidth: 3,
-    borderColor: '#03110f',
+  locateButton: {
+    position: 'absolute',
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.panel,
+    borderWidth: 1,
+    borderColor: colors.panelBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  locateIcon: { fontSize: 22 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(3,5,10,0.8)',
     justifyContent: 'center',
     padding: 24,
   },
-  rewardPanel: {},
   rewardTitle: { color: colors.toxic, fontSize: 18, fontWeight: '800', marginBottom: 6 },
   rewardZone: { color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 8 },
   rewardLine: { color: colors.text, fontSize: 13, marginBottom: 4 },

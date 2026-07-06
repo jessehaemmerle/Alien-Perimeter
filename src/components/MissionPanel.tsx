@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { maxAllowedDeviationM, requiredDistanceM } from '../logic/encirclement';
+import { pathLengthM } from '../logic/geo';
 import { ITEMS } from '../logic/items';
 import { MOVEMENT_MODES, MOVEMENT_PROFILES } from '../logic/movement';
 import { formatDuration } from '../logic/world';
@@ -155,7 +156,9 @@ export function MissionHud() {
   if (!zone) return null;
 
   const evaluation = mission.lastEval;
-  const lapDist = evaluation?.pathLengthM ?? 0;
+  // Live-Distanz direkt aus der Route, damit die Anzeige auch vor der
+  // ersten Bewertung (< 10 Punkte) nicht bei 0 steht
+  const lapDist = pathLengthM(mission.route);
   const required = requiredDistanceM(zone);
   const canExtract =
     !!evaluation && !evaluation.valid && evaluation.rescuable && (inventory.extraction ?? 0) > 0;

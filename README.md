@@ -5,7 +5,8 @@ Schlachtfeld einer Alien-Invasion. Spieler kesseln befallene Gebiete ein, indem 
 umrunden – zu Fuß, joggend, wandernd oder mit dem Rad. Das vollständige Konzept steht in
 [`Spielidee.md`](./Spielidee.md).
 
-Dieses Repository enthält die spielbare Mobile-App (Expo / React Native, TypeScript).
+Dieses Repository enthält die spielbare Mobile-App (Expo / React Native, TypeScript) – als
+native App **und als installierbare PWA** fürs Smartphone aus derselben Codebasis.
 
 ## Features
 
@@ -39,7 +40,30 @@ npm install
 npm start          # Expo Dev Server, QR-Code mit Expo Go scannen
 npm run android    # direkt am Android-Gerät/-Emulator
 npm run ios        # direkt am iOS-Simulator (macOS)
+npm run web        # im Browser (Entwicklungsmodus)
 ```
+
+## PWA am Smartphone
+
+Die App läuft als vollwertige **Progressive Web App**: installierbar am Homescreen
+(Android/Chrome „App installieren“, iOS/Safari „Zum Home-Bildschirm“), Vollbild ohne
+Browser-UI, Offline-App-Shell und gecachte Karten-Tiles per Service Worker. Auf dem Web
+ersetzt eine Leaflet-Karte mit dunklen CARTO/OpenStreetMap-Tiles die native Karte – ganz
+ohne API-Key.
+
+```bash
+npm run build:web   # statischer PWA-Build nach dist/
+npx serve dist      # lokal testen (oder beliebiger statischer Hoster)
+```
+
+Zum Ausprobieren am Handy: `dist/` auf einen statischen Host mit **HTTPS** legen (z. B.
+Netlify, Vercel, GitHub Pages, Cloudflare Pages) und die URL am Smartphone öffnen.
+Wichtig: Die Browser-Geolocation funktioniert nur über HTTPS (oder `localhost`) – ohne
+GPS greift die Ausweichposition Wien, und der **Simulationsmodus** bleibt voll spielbar.
+
+Bausteine: `public/manifest.webmanifest` (Manifest), `public/sw.js` (Service Worker),
+`public/icons/` (generierte Icons, `npm run icons`), `src/pwa.ts` (Registrierung +
+Meta-Tags), `src/components/TacticalMap.web.tsx` (Leaflet-Karte).
 
 Beim ersten Start fragt die App nach der Standort-Berechtigung und erzeugt Invasionszonen in
 der Umgebung. Ohne GPS wird eine Ausweichposition (Wien) verwendet – dann einfach den
@@ -80,6 +104,11 @@ src/logic/                  Reine Spiellogik (getestet)
 src/state/store.ts          Zustand-Store mit AsyncStorage-Persistenz
 src/screens/                Karte, Welt, Ausrüstung, Profil
 src/components/             Missions-Briefing, Missions-HUD, UI-Bausteine
+  TacticalMap.tsx           Einsatzkarte nativ (react-native-maps)
+  TacticalMap.web.tsx       Einsatzkarte Web/PWA (Leaflet)
+src/pwa.ts                  PWA-Setup (Manifest, Meta-Tags, Service Worker)
+public/                     PWA-Assets (Manifest, sw.js, Icons)
+scripts/generate-icons.mjs  Icon-Generierung (npm run icons)
 ```
 
 Hinweis: Für eigenständige Android-Builds (außerhalb von Expo Go) benötigt `react-native-maps`
