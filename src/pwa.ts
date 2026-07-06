@@ -26,14 +26,16 @@ export function setupPwa(): void {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
 
   document.title = 'Alien Perimeter';
-  addLink('manifest', '/manifest.webmanifest');
+  // Relative Pfade, damit die PWA auch unter einem Basis-Pfad funktioniert
+  // (z. B. GitHub Pages: /Alien-Perimeter/)
+  addLink('manifest', 'manifest.webmanifest');
   addMeta('theme-color', '#0b1220');
   addMeta('description', 'Düsteres lokationsbasiertes PvE-Game: Kessle Alien-Zonen durch reale Bewegung ein und verteidige die Erde.');
   addMeta('mobile-web-app-capable', 'yes');
   addMeta('apple-mobile-web-app-capable', 'yes');
   addMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
   addMeta('apple-mobile-web-app-title', 'Alien Perimeter');
-  addLink('apple-touch-icon', '/icons/apple-touch-icon.png');
+  addLink('apple-touch-icon', 'icons/apple-touch-icon.png');
 
   // Viewport für randlose Darstellung auf Notch-Geräten
   let viewport = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
@@ -53,7 +55,8 @@ export function setupPwa(): void {
 
   if (!__DEV__ && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Relativ registriert → Scope ist automatisch der Basis-Pfad
+      navigator.serviceWorker.register('sw.js').catch(() => {
         // Offline-Support ist optional – App funktioniert auch ohne SW
       });
     });

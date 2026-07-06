@@ -56,10 +56,26 @@ npm run build:web   # statischer PWA-Build nach dist/
 npx serve dist      # lokal testen (oder beliebiger statischer Hoster)
 ```
 
-Zum Ausprobieren am Handy: `dist/` auf einen statischen Host mit **HTTPS** legen (z. B.
-Netlify, Vercel, GitHub Pages, Cloudflare Pages) und die URL am Smartphone öffnen.
-Wichtig: Die Browser-Geolocation funktioniert nur über HTTPS (oder `localhost`) – ohne
-GPS greift die Ausweichposition Wien, und der **Simulationsmodus** bleibt voll spielbar.
+### Automatisches Deployment auf GitHub Pages
+
+Der Workflow [`deploy-pages.yml`](./.github/workflows/deploy-pages.yml) baut die PWA bei
+jedem Push auf `main` (Typecheck + Tests + Export) und veröffentlicht sie auf GitHub Pages:
+
+**https://jessehaemmerle.github.io/Alien-Perimeter/**
+
+Diese URL am Smartphone öffnen und über „App installieren“ / „Zum Home-Bildschirm“
+installieren – fertig. Der Workflow lässt sich auch manuell von jedem Branch starten
+(Actions → *Deploy PWA to GitHub Pages* → *Run workflow*). Falls das automatische
+Aktivieren von Pages an Berechtigungen scheitert, einmalig unter
+*Settings → Pages → Source: „GitHub Actions“* freischalten.
+
+Der Build läuft mit `EXPO_BASE_URL=/Alien-Perimeter` (siehe `app.config.js`), da Project
+Pages unter einem Unterpfad liegen; Manifest, Icons und Service Worker verwenden dafür
+relative bzw. Scope-basierte Pfade.
+
+Wichtig: Die Browser-Geolocation funktioniert nur über HTTPS (oder `localhost`) – GitHub
+Pages erfüllt das. Ohne GPS-Freigabe greift die Ausweichposition Wien, und der
+**Simulationsmodus** bleibt voll spielbar.
 
 Bausteine: `public/manifest.webmanifest` (Manifest), `public/sw.js` (Service Worker),
 `public/icons/` (generierte Icons, `npm run icons`), `src/pwa.ts` (Registrierung +

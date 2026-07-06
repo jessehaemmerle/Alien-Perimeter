@@ -1,16 +1,23 @@
 /* Service Worker für Alien Perimeter (PWA) */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL_CACHE = `ap-shell-${VERSION}`;
 const RUNTIME_CACHE = `ap-runtime-${VERSION}`;
 const TILE_CACHE = 'ap-tiles';
 const MAX_TILES = 400;
 
+/**
+ * Basis-Pfad aus dem Registration-Scope ableiten, damit die PWA sowohl
+ * unter "/" als auch unter einem Unterpfad (GitHub Pages:
+ * "/Alien-Perimeter/") funktioniert.
+ */
+const BASE = new URL(self.registration.scope).pathname;
+
 const SHELL_URLS = [
-  '/',
-  '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
+  BASE,
+  `${BASE}manifest.webmanifest`,
+  `${BASE}icons/icon-192.png`,
+  `${BASE}icons/icon-512.png`,
+  `${BASE}icons/apple-touch-icon.png`,
 ];
 
 self.addEventListener('install', (event) => {
@@ -59,10 +66,10 @@ async function navigationStrategy(request) {
   try {
     const response = await fetch(request);
     const cache = await caches.open(SHELL_CACHE);
-    cache.put('/', response.clone());
+    cache.put(BASE, response.clone());
     return response;
   } catch {
-    const cached = await caches.match('/');
+    const cached = await caches.match(BASE);
     if (cached) return cached;
     throw new Error('offline');
   }
